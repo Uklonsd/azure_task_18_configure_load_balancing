@@ -148,13 +148,15 @@ $loadbalancer = @{
 }
 New-AzLoadBalancer @loadbalancer
 
-
 Write-Host "Adding VMs to the backend pool"
+$lb = Get-AzLoadBalancer -ResourceGroupName $resourceGroupName -Name $lbName
+$backendPool = $lb.BackendAddressPools | Where-Object { $_.Name -eq "$lbName-BackEndPool" }
 $vms = Get-AzVm -ResourceGroupName $resourceGroupName | Where-Object { $_.Name.StartsWith($webVmName) }
-foreach ($vm in $vms) {
-   $nic = Get-AzNetworkInterface -ResourceGroupName $resourceGroupName | Where-Object { $_.Id -eq $vm.NetworkProfile.NetworkInterfaces.Id }
-   $ipCfg = $nic.IpConfigurations | Where-Object { $_.Primary }
-   $ipCfg.LoadBalancerBackendAddressPools.Add($bepool)
-   Set-AzNetworkInterface -NetworkInterface $nic
 
+foreach ($vm in $vms) {
+    $nicId = $vm.NetworkProfile.NetworkInterfaces[0].Id
+    $nic = Get-AzNetworkInterface -ResourceGroupName $resourceGroupName | Where-Object { $_.Id -eq $nicId }
+    $ipCfg = $nic.IpConfigurations | Where-Object { $_.Primary }
+    $ipCfg.LoadBalancerBackendAddressPools.Add($backendPool)
+    Set-AzNetworkInterface -NetworkInterface $nic
 }
